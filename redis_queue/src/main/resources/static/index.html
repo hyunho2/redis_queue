@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Redis queue</title>
+    <script src="js/jquery.js"></script>
+    <script src="js/moment.js"></script>
+    <script src="js/vue.js"></script>
+    <script src="js/vue.utils.js"></script>
+</head>
+<body >
+<div id="contents">
+    <div>
+        현재 접속자 수 : {{ currentUserCount }} <br />
+        접속 순번 : {{ currentRank }} <br />
+        채번 시간 : {{ timer }}
+    </div>
+    <div>
+        접속자 On : <input type="radio" id="one" @click="clickActiveIncrease" />
+        <br />
+        요청번호 확인 : <input type="text" id="requestNo"  /><input type="button" @click="change1" value="확인"/><span id="resultNo"></span> <br />
+        루프수 : <input type="text" id="loopCount"  />
+
+        <br/><br/><br/>
+        <input type="button" @click="execute" value="실행"/>
+    </div>
+    <div id="resultMsg"></div>
+</div>
+<script>
+    'use strict';
+
+    var page = new Vue({
+        el : "#contents",
+        data: {
+            currentUserCount: 0
+            , currentRank: 0
+            , timer : null
+            , start : null
+            , loop : false
+        },
+        created: function () {
+            this.getCurrentUserCount();
+        },
+        mounted() {
+            setInterval(this.getCurrentUserCount, 1000);
+            setInterval(this.getCurrentRank, 1000);
+        },
+        watch:{
+        },
+        methods: {
+            process: function () {
+                var t = this;
+                if(t.loop) {
+                    this.start = new Date();
+                    Util.get('/process?loopCount='+$("#loopCount").val() + '&requestNo='+$("#requestNo").val(), {}, function (res) {});
+                }
+            },
+            getCurrentUserCount: function () {
+                var t = this;
+                Util.get('/currentUserCount', {}, function (res) {
+                    t.currentUserCount = res;
+                });
+
+            },
+            getCurrentRank: function () {
+                var t = this;
+                if(t.loop) {
+                    var reg = /[`\[\]\\\/ ]/gim;
+
+                    Util.get('/currentRank?resultNo='+$("#resultNo").text().replace(reg ,""), {}, function (res) {
+                        t.currentRank = res;
+                        if (res == "null") {
+                            var time = new Date() - t.start;
+                            t.timer = time;
+                            t.loop = false;
+                            var text = "<br />요청순번 : " + $("#requestNo").val() + "/루프 수 : " + $("#loopCount").val() + "/채번 시간 : " + time ;
+                            $("#resultMsg").append(text );
+                        }
+                    });
+                }
+            } ,
+            execute: function () {
+                this.loop = true;
+                this.getCurrentRank();
+                this.process();
+            } ,
+            change1: function () {
+                var t = this;
+
+                Util.get('/requestNo?requestNo='+$("#requestNo").val(), {}, function(res) {
+                    $("#resultNo").text(res);
+                });
+
+            } ,
+            clickActiveIncrease: function () {
+                Util.get('/activeIncrease', {}, function (res) {});
+            }
+        }
+    });
+
+</script>
+</body>
+</html>
